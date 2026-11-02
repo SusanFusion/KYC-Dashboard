@@ -8,6 +8,9 @@
 // period without a data migration.
 import type { Agent, ImportRecord, ImportRow, Period, Team } from "@/types/domain";
 import type { PenaltyEntry, RawAgentMetrics, RawGateMetrics, RawIndividualMetricKey } from "@/lib/scoring/types";
+
+/** The numeric Business Gate fields stored on a gate row (RawGateMetrics, minus periodId). */
+export type GateFieldKey = "clientAvgWaitTimeMin" | "teamProcessingTimeMin" | "chatTeamAvgResponseSec" | "teamTicketAHTMin" | "teamRejectionRatePct";
 import type { NewQaAuditInput, QaAuditRecord, QaAuditStatus, QaAuditType } from "@/lib/qa/auditDefinitions";
 
 export interface DataRepository {
@@ -63,6 +66,16 @@ export interface DataRepository {
    *  clear). Returns how many of the given periods actually had a row that
    *  got cleared. */
   clearIndividualMetricField(agentId: string, periodIds: string[], field: RawIndividualMetricKey): Promise<number>;
+
+  /** Nulls one Business Gate field on every one of the given periods that
+   *  has a gate row with a value in it -- the Data Import page's "clear a
+   *  Business Gate field across a month" action (see
+   *  clearGateFieldRangeAction in app/import/actions.ts). Needed because the
+   *  month view keeps a value from ANY import on a day (an empty value never
+   *  overrides it), so a leftover from an old PDF import can only be
+   *  removed by blanking it at the source. Leaves every other field on the
+   *  row untouched. Returns how many periods actually had a value cleared. */
+  clearGateMetricField(periodIds: string[], field: GateFieldKey): Promise<number>;
 
   /** Removes a period and everything stored against it — its raw
    *  individual metrics, its Business Gate metrics, any penalties logged
