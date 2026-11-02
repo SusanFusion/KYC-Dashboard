@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { getRepository } from "@/lib/data/repository";
 import { getDailyPeriods, listAvailableMonths } from "@/lib/data/query";
 import type { RawIndividualMetricKey } from "@/lib/scoring/types";
+import type { GateFieldKey } from "@/lib/data/repository";
 import { ACTION_ACCESS_COOKIE_NAME, verifyActionAccessToken } from "@/lib/auth/actionAccess";
 
 // Mirrors the same validation /api/import/clear-field/route.ts does for its
@@ -23,6 +24,18 @@ const INDIVIDUAL_FIELD_KEYS = new Set<RawIndividualMetricKey>([
   "qaAuditPct",
   "emailTicketCount",
 ]);
+
+// Business Gate fields the "clear across a month" action may blank. "manualOnly"
+// is a shortcut for the two fields that are typed in by hand and never read
+// from a PDF (Client Avg Wait Time and Team Processing Time).
+const GATE_FIELD_KEYS = new Set<GateFieldKey>([
+  "clientAvgWaitTimeMin",
+  "teamProcessingTimeMin",
+  "chatTeamAvgResponseSec",
+  "teamTicketAHTMin",
+  "teamRejectionRatePct",
+]);
+const MANUAL_ONLY_GATE_FIELDS: GateFieldKey[] = ["clientAvgWaitTimeMin", "teamProcessingTimeMin"];
 
 /** Same pattern as src/app/penalties/actions.ts's own copy of this helper --
  *  requireActionAccess() in actionAccess.ts returns a NextResponse, built
@@ -116,5 +129,51 @@ export async function clearIndividualMetricFieldAction(formData: FormData) {
   revalidatePath("/rankings");
   revalidatePath("/reports");
   revalidatePath(`/scorecards/${agentId}`);
+  return { ok: true as const, clearedCount };
+}
+
+/** Nulls one Business Gate field (or both hand-typed ones) on every day
+ *  already imported in one chosen month. Day periods are recomputed here
+ *  from the month key, never taken from the client, exactly like
+ *  clearIndividualMetricFieldAction. Individual agent data is untouched. */
+export async function clearGateFieldRangeAction(formData: FormData) {
+  const accessError = await checkActionAccess();
+  if (accessError) return { ok: false as const, error: accessError };
+
+  const monthKey = String(formData.get("monthKey") ?? "");
+  const fieldRaw = String(formData.get("field") ?? "");
+  if (!monthKey || !fieldRaw) {
+    return { ok: false as const, error: "Missing month or Business Gate field." };
+  }
+  let fields: GateFieldKey[];
+  if (fieldRaw === "manualOnly") {
+    fields = MANUAL_ONLY_GATE_FIELDS;
+  } else if (GATE_FIELD_KEYS.has(fieldRaw as GateFieldKey)) {
+    fields = [fieldRaw as GateFieldKey];
+  } else {
+    return { ok: false as const, error: "Unknown Business Gate field." };
+  }
+
+  const repo = await getRepository();
+  const [periods, months] = await Promise.all([repo.getPeriods(), listAvailableMonths()]);
+  const month = months.find((m) => m.key === monthKey);
+  if (!month) return { ok: false as const, error: "That month no longer has any imports." };
+
+  const periodIds = getDailyPeriods(periods)
+    .filter((p) => p.startDate >= month.start && p.endDate <= month.end)
+    .map((p) => p.id);
+
+  let clearedCount = 0;
+  for (const field of fields) {
+    clearedCount += await repo.clearGateMetricField(periodIds, field);
+  }
+
+  revalidatePath("/import");
+  revalidatePath("/team-performance");
+  revalidatePath("/trends");
+  revalidatePath("/mtd");
+  revalidatePath("/");
+  revalidatePath("/rankings");
+  revalidatePath("/reports");
   return { ok: true as const, clearedCount };
 }
