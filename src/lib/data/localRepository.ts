@@ -1,4 +1,4 @@
-import type { DataRepository } from "./repository";
+import type { DataRepository, GateFieldKey } from "./repository";
 import type { Agent, ImportRecord, ImportRow, Period, Team } from "@/types/domain";
 import type { PenaltyEntry, RawAgentMetrics, RawGateMetrics, RawIndividualMetricKey } from "@/lib/scoring/types";
 import type { NewQaAuditInput, QaAuditRecord, QaAuditStatus, QaAuditType } from "@/lib/qa/auditDefinitions";
@@ -176,6 +176,21 @@ export class LocalRepository implements DataRepository {
       const nextRows = [...rows];
       nextRows[idx] = nextRow;
       store.rawMetricsByPeriod.set(periodId, nextRows);
+      cleared += 1;
+    }
+    return cleared;
+  }
+
+  async clearGateMetricField(periodIds: string[], field: GateFieldKey) {
+    let cleared = 0;
+    for (const periodId of periodIds) {
+      const existing = store.gateByPeriod.get(periodId);
+      if (!existing) continue;
+      const value = (existing as unknown as Record<string, number | null | undefined>)[field];
+      if (value === null || value === undefined) continue;
+      const next = { ...existing };
+      (next as unknown as Record<string, number | null>)[field] = null;
+      store.gateByPeriod.set(periodId, next);
       cleared += 1;
     }
     return cleared;
