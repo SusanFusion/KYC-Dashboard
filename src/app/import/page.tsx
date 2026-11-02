@@ -7,6 +7,7 @@ import { ManualEntryForm } from "@/components/shared/ManualEntryForm";
 import { ImportHistoryList } from "@/components/shared/ImportHistoryList";
 import { RawMetricRecordsManager } from "@/components/shared/RawMetricRecordsManager";
 import { ClearMetricFieldForm } from "@/components/shared/ClearMetricFieldForm";
+import { ClearGateFieldForm } from "@/components/shared/ClearGateFieldForm";
 import { PasswordGate } from "@/components/shared/PasswordGate";
 import { getRepository } from "@/lib/data/repository";
 import { listAvailableMonths } from "@/lib/data/query";
@@ -157,6 +158,22 @@ export default async function ImportPage() {
                   months={monthOptions}
                   fields={metricFieldOptions}
                 />
+              </CardContent>
+            </Card>
+          )}
+
+          {canManageRawMetrics && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Clear a Business Gate field across a month</CardTitle>
+                <CardDescription>
+                  Blanks one team-level Business Gate figure (or Client Avg Wait Time and Team Processing Time together)
+                  on every day already imported in a selected month, including values left behind by an old PDF import.
+                  Agent data is not touched. Visible to Leads/Auditors only.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClearGateFieldForm months={monthOptions} />
               </CardContent>
             </Card>
           )}
