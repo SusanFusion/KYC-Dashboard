@@ -1,4 +1,4 @@
-import type { DataRepository } from "./repository";
+import type { DataRepository, GateFieldKey } from "./repository";
 import type { Agent, ImportRecord, ImportRow, Period, Team } from "@/types/domain";
 import type { PenaltyEntry, RawAgentMetrics, RawGateMetrics, RawIndividualMetricKey } from "@/lib/scoring/types";
 import type { NewQaAuditInput, QaAuditRecord, QaAuditStatus, QaAuditType } from "@/lib/qa/auditDefinitions";
@@ -19,6 +19,16 @@ const INDIVIDUAL_FIELD_COLUMN: Record<RawIndividualMetricKey, string> = {
   dsatCount: "dsat_count",
   qaAuditPct: "qa_audit_pct",
   emailTicketCount: "email_ticket_count",
+};
+
+// Column name of each Business Gate field on gate_metrics, for the same reason
+// as INDIVIDUAL_FIELD_COLUMN above.
+const GATE_FIELD_COLUMN: Record<GateFieldKey, string> = {
+  clientAvgWaitTimeMin: "client_avg_wait_time_min",
+  teamProcessingTimeMin: "team_processing_time_min",
+  chatTeamAvgResponseSec: "chat_team_avg_response_sec",
+  teamTicketAHTMin: "team_ticket_aht_min",
+  teamRejectionRatePct: "team_rejection_rate_pct",
 };
 
 /**
@@ -349,6 +359,19 @@ export class SupabaseRepository implements DataRepository {
       .update({ [column]: null })
       .eq("agent_id", agentId)
       .in("period_id", periodIds)
+      .select("period_id");
+    if (error) throw error;
+    return (data ?? []).length;
+  }
+
+  async clearGateMetricField(periodIds: string[], field: GateFieldKey): Promise<number> {
+    if (periodIds.length === 0) return 0;
+    const column = GATE_FIELD_COLUMN[field];
+    const { data, error } = await this.writeClient
+      .from("gate_metrics")
+      .update({ [column]: null })
+      .in("period_id", periodIds)
+      .not(column, "is", null)
       .select("period_id");
     if (error) throw error;
     return (data ?? []).length;
