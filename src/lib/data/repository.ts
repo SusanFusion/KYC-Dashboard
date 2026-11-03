@@ -13,6 +13,20 @@ import type { PenaltyEntry, RawAgentMetrics, RawGateMetrics, RawIndividualMetric
 export type GateFieldKey = "clientAvgWaitTimeMin" | "teamProcessingTimeMin" | "chatTeamAvgResponseSec" | "teamTicketAHTMin" | "teamRejectionRatePct";
 import type { NewQaAuditInput, QaAuditRecord, QaAuditStatus, QaAuditType } from "@/lib/qa/auditDefinitions";
 
+/** Every individual KPI field a "clear the month's scorecards" action blanks.
+ *  QA Audit % is deliberately NOT in here: it is kept. */
+export const SCORECARD_KPI_FIELDS: RawIndividualMetricKey[] = [
+  "totalChatConversations",
+  "avgFirstResponseTimeSec",
+  "avgResponseTimeSec",
+  "emailAHTSec",
+  "appAHTSec",
+  "totalChats",
+  "csatCount",
+  "dsatCount",
+  "emailTicketCount",
+];
+
 export interface DataRepository {
   getTeams(): Promise<Team[]>;
   getAgents(): Promise<Agent[]>;
@@ -66,6 +80,14 @@ export interface DataRepository {
    *  clear). Returns how many of the given periods actually had a row that
    *  got cleared. */
   clearIndividualMetricField(agentId: string, periodIds: string[], field: RawIndividualMetricKey): Promise<number>;
+
+  /** Nulls EVERY scorecard KPI field (SCORECARD_KPI_FIELDS -- everything
+   *  except QA Audit %) on every one of the given periods, for one agent, or
+   *  for every agent when agentId is null. Rows stay in place so QA Audit %
+   *  and each period itself are untouched; penalties are stored separately
+   *  and are never affected. Returns how many agent+period rows were
+   *  updated. */
+  clearScorecardKpis(agentId: string | null, periodIds: string[]): Promise<number>;
 
   /** Nulls one Business Gate field on every one of the given periods that
    *  has a gate row with a value in it -- the Data Import page's "clear a
