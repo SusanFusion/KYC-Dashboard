@@ -35,7 +35,7 @@ export interface ImportHistoryRow {
  *  them one at a time means the second call sees the first's deletion
  *  already applied, so the period correctly goes when the last import
  *  pointing at it is removed. */
-async function deleteOne(importId: string): Promise<{ ok: true; deletedPeriod: boolean; periodLabel?: string } | { ok: false; error: string }> {
+async function deleteOne(importId: string): Promise<{ ok: true; deletedPeriod: boolean; periodLabel?: string; message?: string } | { ok: false; error: string }> {
   try {
     const res = await fetch("/api/import/delete", {
       method: "POST",
@@ -46,7 +46,7 @@ async function deleteOne(importId: string): Promise<{ ok: true; deletedPeriod: b
     if (!res.ok) {
       return { ok: false, error: data.detail ? `${data.error} (${data.detail})` : data.error ?? "Failed to delete." };
     }
-    return { ok: true, deletedPeriod: Boolean(data.deletedPeriod), periodLabel: data.periodLabel };
+    return { ok: true, deletedPeriod: Boolean(data.deletedPeriod), periodLabel: data.periodLabel, message: data.message };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Unexpected error." };
   }
@@ -125,7 +125,7 @@ export function ImportHistoryList({ imports }: { imports: ImportHistoryRow[] }) 
       showToast(
         result.deletedPeriod
           ? `Deleted "${result.periodLabel}" — removed from every page that reads it.`
-          : "Import record removed.",
+          : (result.message ?? "Import record removed."),
         "success"
       );
       setPending(null);
@@ -160,7 +160,7 @@ export function ImportHistoryList({ imports }: { imports: ImportHistoryRow[] }) 
 
     const parts: string[] = [];
     if (periodsDeleted > 0) parts.push(`${periodsDeleted} day${periodsDeleted === 1 ? "" : "s"} of data deleted`);
-    if (recordsRemoved > 0) parts.push(`${recordsRemoved} import record${recordsRemoved === 1 ? "" : "s"} removed`);
+    if (recordsRemoved > 0) parts.push(`${recordsRemoved} import${recordsRemoved === 1 ? "" : "s"} removed with the values ${recordsRemoved === 1 ? "it" : "they"} wrote`);
     const summary = parts.length > 0 ? parts.join(", ") + "." : "Nothing was deleted.";
 
     if (failures.length === 0) {
@@ -258,7 +258,7 @@ export function ImportHistoryList({ imports }: { imports: ImportHistoryRow[] }) 
         title="Delete this import?"
         description={
           pending?.periodId
-            ? `This will remove "${pending.periodLabel ?? "this period"}" and everything recorded for it — individual metrics, Business Gate numbers, and any penalties logged against it. It will no longer appear on Team Performance, Trends, Overall MTD, Dashboard, Rankings, Scorecards, or Reports. This can't be undone.`
+            ? `This removes this import and the data it recorded. If it is the only import on "${pending.periodLabel ?? "this period"}", the whole day goes: individual metrics, Business Gate numbers, and any penalties logged against it. If another import shares that day, only the values this import wrote are removed (a value another import also wrote goes back to that import's value) and the other import's data and penalties stay. It disappears from Team Performance, Trends, Overall MTD, Dashboard, Rankings, Scorecards, and Reports. This can't be undone.`
             : "This removes the import record from the history above. It never affected any period's data (it wasn't committed, or was committed before this link was tracked), so nothing else on the app changes."
         }
         footer={
@@ -287,10 +287,10 @@ export function ImportHistoryList({ imports }: { imports: ImportHistoryRow[] }) 
           periodsToDelete.size > 0
             ? `This permanently deletes ${periodsToDelete.size} full day${periodsToDelete.size === 1 ? "" : "s"} of data — individual metrics, Business Gate numbers, and any penalties logged against ${periodsToDelete.size === 1 ? "it" : "them"} — removed from every page that reads it.${
                 recordOnlyCount > 0
-                  ? ` The other ${recordOnlyCount} selected import${recordOnlyCount === 1 ? "" : "s"} will just have its audit-trail record removed, since another import outside this selection still shares that same day.`
+                  ? ` The other ${recordOnlyCount} selected import${recordOnlyCount === 1 ? "" : "s"} share${recordOnlyCount === 1 ? "s" : ""} a day with an import outside this selection, so only the values ${recordOnlyCount === 1 ? "it wrote are" : "they wrote are"} removed and the other import's data stays.`
                   : ""
               } This can't be undone.`
-            : "None of the selected imports will remove a full day's data — either they were never committed, or every period they touch is still shared with another import outside this selection. This only removes their audit-trail records; no scorecard or dashboard data changes. This can't be undone."
+            : "None of the selected imports will remove a full day. Each one that shares its day with an import outside this selection has only its own values removed, and the other import's data stays. An import that was never committed only loses its history record. This can't be undone."
         }
         footer={
           <>
