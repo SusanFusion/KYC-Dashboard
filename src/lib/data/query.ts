@@ -203,10 +203,16 @@ export async function loadAgentRangeResult(agentId: string, spec: RangeSpec): Pr
 // can never compute a score by different rules than a single day does.
 //
 // The two kinds of raw fields aggregate differently:
-//   - App/Email AHT and QA Audit % are plain averages with no paired
-//     "count of things averaged" field in the data (see notes.ts and the
-//     Trends delta-precision fix) — the only honest way to combine several
-//     days of them is an unweighted mean across the days that have data.
+//   - App AHT and QA Audit % are plain averages with no paired "count of
+//     things averaged" field in the data (see notes.ts and the Trends
+//     delta-precision fix) — the only honest way to combine several days of
+//     them is an unweighted mean across the days that have data.
+//   - Email AHT IS paired with a count: each day's email ticket count
+//     (emailTicketCount, from the report's "KYC Email Ave Volume" table, the
+//     same tickets the AHT is an average of). So Email AHT combines as a
+//     ticket-weighted mean, the way Freshdesk's own monthly figure is
+//     computed (total handling time / number of tickets), instead of letting
+//     a day with a handful of tickets count as much as a day with sixty.
 //   - Chat First Response and Chat Avg Response ARE averages over that day's
 //     chats, and each day's chat count IS in the data (totalChatConversations),
 //     so they combine as a chat-weighted mean -- exactly how the source
@@ -233,41 +239,49 @@ function sum(values: number[]): number | null {
   return values.length ? values.reduce((s, v) => s + v, 0) : null;
 }
 
-/** Month/week average of a per-chat average (Chat First Response / Chat Avg
- *  Response), weighted by how many chats each day's figure is an average OF.
- *  A day explicitly reporting 0 chats has nothing to contribute and is left
- *  out; a day with a value but no chat count at all (an older import) is
- *  imputed the average chat count of the days that do have one, so it isn't
- *  silently dropped. With no usable chat counts anywhere this is the plain
- *  mean of the days that have a value. */
-function chatWeightedMean(dayRows: RawAgentMetrics[], field: "avgFirstResponseTimeSec" | "avgResponseTimeSec"): number | null {
-  const present: { value: number; chats: number | null }[] = [];
+/** Month/week average of a per-case average (Chat First Response / Chat Avg
+ *  Response weighted by chats, Email AHT weighted by email tickets), weighted
+ *  by how many cases each day's figure is an average OF. A day explicitly
+ *  reporting 0 cases has nothing to contribute and is left out; a day with a
+ *  value but no case count at all (an older import, or a report that day
+ *  without the volume table) is imputed the average count of the days that do
+ *  have one, so it isn't silently dropped. With no usable counts anywhere
+ *  this is the plain mean of the days that have a value. */
+function volumeWeightedMean(
+  dayRows: RawAgentMetrics[],
+  field: "avgFirstResponseTimeSec" | "avgResponseTimeSec" | "emailAHTSec",
+  weightField: "totalChatConversations" | "emailTicketCount"
+): number | null {
+  const present: { value: number; cases: number | null }[] = [];
   for (const row of dayRows) {
     const value = row[field];
     if (value === null) continue;
-    present.push({ value, chats: row.totalChatConversations });
+    present.push({ value, cases: row[weightField] });
   }
   if (present.length === 0) return null;
 
-  const counted = present.filter((p) => p.chats !== 0);
+  const counted = present.filter((p) => p.cases !== 0);
   if (counted.length === 0) return mean(present.map((p) => p.value));
 
-  const knownChats = counted.map((p) => p.chats).filter((c): c is number => c !== null && c > 0);
-  const fallbackChats = knownChats.length > 0 ? mean(knownChats)! : 1;
-  const weightOf = (chats: number | null) => (chats !== null && chats > 0 ? chats : fallbackChats);
+  const knownCases = counted.map((p) => p.cases).filter((c): c is number => c !== null && c > 0);
+  const fallbackCases = knownCases.length > 0 ? mean(knownCases)! : 1;
+  const weightOf = (cases: number | null) => (cases !== null && cases > 0 ? cases : fallbackCases);
 
-  const totalWeight = counted.reduce((s, p) => s + weightOf(p.chats), 0);
-  return counted.reduce((s, p) => s + p.value * weightOf(p.chats), 0) / totalWeight;
+  const totalWeight = counted.reduce((s, p) => s + weightOf(p.cases), 0);
+  return counted.reduce((s, p) => s + p.value * weightOf(p.cases), 0) / totalWeight;
 }
 
 function aggregateAgentRaw(agentId: string, periodId: string, dayRows: RawAgentMetrics[]): RawAgentMetrics {
   if (dayRows.length === 0) return emptyRawMetrics(agentId, periodId);
   const result = emptyRawMetrics(agentId, periodId);
   for (const field of AVERAGE_FIELDS) {
-    result[field] =
-      field === "avgFirstResponseTimeSec" || field === "avgResponseTimeSec"
-        ? chatWeightedMean(dayRows, field)
-        : mean(dayRows.map((r) => r[field]).filter((v): v is number => v !== null));
+    if (field === "avgFirstResponseTimeSec" || field === "avgResponseTimeSec") {
+      result[field] = volumeWeightedMean(dayRows, field, "totalChatConversations");
+    } else if (field === "emailAHTSec") {
+      result[field] = volumeWeightedMean(dayRows, field, "emailTicketCount");
+    } else {
+      result[field] = mean(dayRows.map((r) => r[field]).filter((v): v is number => v !== null));
+    }
   }
   for (const field of SUM_FIELDS) {
     result[field] = sum(dayRows.map((r) => r[field]).filter((v): v is number => v !== null));
