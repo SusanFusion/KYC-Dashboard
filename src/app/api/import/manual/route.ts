@@ -39,6 +39,7 @@ const VALID_METRIC_KEYS = new Set([
   "csatCount",
   "dsatCount",
   "qaAuditPct",
+  "emailTicketCount",
 ]);
 
 export async function POST(request: Request) {
