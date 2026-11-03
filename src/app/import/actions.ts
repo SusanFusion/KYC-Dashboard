@@ -177,3 +177,46 @@ export async function clearGateFieldRangeAction(formData: FormData) {
   revalidatePath("/reports");
   return { ok: true as const, clearedCount };
 }
+
+/** Blanks every scorecard KPI (all except QA Audit %) for one agent, or for
+ *  every agent, across every day already imported in one chosen month.
+ *  Penalties and QA audit records are not touched. The month's day periods
+ *  are recomputed here from the month key, never taken from the client. */
+export async function clearScorecardsMonthAction(formData: FormData) {
+  const accessError = await checkActionAccess();
+  if (accessError) return { ok: false as const, error: accessError };
+
+  const monthKey = String(formData.get("monthKey") ?? "");
+  const agentRaw = String(formData.get("agentId") ?? "");
+  if (!monthKey || !agentRaw) {
+    return { ok: false as const, error: "Missing month or agent." };
+  }
+
+  const repo = await getRepository();
+  const [periods, months, agents] = await Promise.all([repo.getPeriods(), listAvailableMonths(), repo.getAgents()]);
+  const month = months.find((m) => m.key === monthKey);
+  if (!month) return { ok: false as const, error: "That month no longer has any imports." };
+
+  let agentId: string | null = null;
+  if (agentRaw !== "all") {
+    if (!agents.some((a) => a.id === agentRaw)) return { ok: false as const, error: "Unknown agent." };
+    agentId = agentRaw;
+  }
+
+  const periodIds = getDailyPeriods(periods)
+    .filter((p) => p.startDate >= month.start && p.endDate <= month.end)
+    .map((p) => p.id);
+
+  const clearedCount = await repo.clearScorecardKpis(agentId, periodIds);
+
+  revalidatePath("/import");
+  revalidatePath("/team-performance");
+  revalidatePath("/trends");
+  revalidatePath("/mtd");
+  revalidatePath("/");
+  revalidatePath("/rankings");
+  revalidatePath("/reports");
+  revalidatePath("/scorecards");
+  if (agentId) revalidatePath(`/scorecards/${agentId}`);
+  return { ok: true as const, clearedCount };
+}
