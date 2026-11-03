@@ -8,6 +8,7 @@ import { ImportHistoryList } from "@/components/shared/ImportHistoryList";
 import { RawMetricRecordsManager } from "@/components/shared/RawMetricRecordsManager";
 import { ClearMetricFieldForm } from "@/components/shared/ClearMetricFieldForm";
 import { ClearGateFieldForm } from "@/components/shared/ClearGateFieldForm";
+import { ClearScorecardsForm } from "@/components/shared/ClearScorecardsForm";
 import { PasswordGate } from "@/components/shared/PasswordGate";
 import { getRepository } from "@/lib/data/repository";
 import { listAvailableMonths } from "@/lib/data/query";
@@ -174,6 +175,22 @@ export default async function ImportPage() {
               </CardHeader>
               <CardContent>
                 <ClearGateFieldForm months={monthOptions} />
+              </CardContent>
+            </Card>
+          )}
+
+          {canManageRawMetrics && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Clear individual scorecards for a month</CardTitle>
+                <CardDescription>
+                  Blanks every KPI on the individual scorecards (AHT, chat response, CSAT/DSAT, ticket counts) for one
+                  agent or for all agents, across every day already imported in a selected month. QA Audit % and
+                  penalties are kept. Visible to Leads/Auditors only.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClearScorecardsForm agents={agents.map((a) => ({ id: a.id, name: a.name }))} months={monthOptions} />
               </CardContent>
             </Card>
           )}
