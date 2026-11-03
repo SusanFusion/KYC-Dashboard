@@ -1,4 +1,4 @@
-import type { DataRepository, GateFieldKey } from "./repository";
+import { SCORECARD_KPI_FIELDS, type DataRepository, type GateFieldKey } from "./repository";
 import type { Agent, ImportRecord, ImportRow, Period, Team } from "@/types/domain";
 import type { PenaltyEntry, RawAgentMetrics, RawGateMetrics, RawIndividualMetricKey } from "@/lib/scoring/types";
 import type { NewQaAuditInput, QaAuditRecord, QaAuditStatus, QaAuditType } from "@/lib/qa/auditDefinitions";
@@ -177,6 +177,23 @@ export class LocalRepository implements DataRepository {
       nextRows[idx] = nextRow;
       store.rawMetricsByPeriod.set(periodId, nextRows);
       cleared += 1;
+    }
+    return cleared;
+  }
+
+  async clearScorecardKpis(agentId: string | null, periodIds: string[]) {
+    let cleared = 0;
+    for (const periodId of periodIds) {
+      const rows = store.rawMetricsByPeriod.get(periodId);
+      if (!rows) continue;
+      const nextRows = rows.map((row) => {
+        if (agentId !== null && row.agentId !== agentId) return row;
+        const next: RawAgentMetrics = { ...row };
+        for (const field of SCORECARD_KPI_FIELDS) (next as unknown as Record<string, number | null>)[field] = null;
+        cleared += 1;
+        return next;
+      });
+      store.rawMetricsByPeriod.set(periodId, nextRows);
     }
     return cleared;
   }
