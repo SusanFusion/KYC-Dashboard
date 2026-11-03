@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getRepository } from "@/lib/data/repository";
 import { describeError } from "@/lib/utils";
 import { requireActionAccess } from "@/lib/auth/actionAccess";
+import { removeImportContribution } from "@/lib/data/removeImportContribution";
 
 export const runtime = "nodejs";
 
@@ -58,16 +59,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // Another import also contributed to this same period — deleting the
-    // whole period here would erase that other import's data too, which
-    // this specific delete was never asked to do. Only remove this one
-    // import's own audit-trail record; the period and everything stored
-    // against it (including whatever this import itself wrote) stays.
+    // Another import also contributed to this same period, so the whole day
+    // can't go. Instead, take back exactly what THIS import wrote (see
+    // removeImportContribution.ts) and leave everything the other imports
+    // wrote, and every penalty, in place.
+    const removed = period ? await removeImportContribution(repo, record, siblingImports, period) : { agentValuesChanged: 0, gateValuesChanged: 0 };
     await repo.deleteImport(record.id);
     return NextResponse.json({
       ok: true,
       deletedPeriod: false,
-      message: `Import record removed. Its data is still part of "${period?.label ?? record.periodId}" because another import also contributed to that same period.`,
+      agentValuesRemoved: removed.agentValuesChanged,
+      gateValuesRemoved: removed.gateValuesChanged,
+      periodLabel: period?.label ?? record.periodLabel ?? record.periodId,
+      message: `Import removed along with the ${removed.agentValuesChanged} agent value${removed.agentValuesChanged === 1 ? "" : "s"} and ${removed.gateValuesChanged} Business Gate value${removed.gateValuesChanged === 1 ? "" : "s"} it had written for "${period?.label ?? record.periodId}". Data from the other imports on that day was kept.`,
     });
   } catch (err) {
     return NextResponse.json(
