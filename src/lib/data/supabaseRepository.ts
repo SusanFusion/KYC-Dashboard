@@ -1,4 +1,4 @@
-import type { DataRepository, GateFieldKey } from "./repository";
+import { SCORECARD_KPI_FIELDS, type DataRepository, type GateFieldKey } from "./repository";
 import type { Agent, ImportRecord, ImportRow, Period, Team } from "@/types/domain";
 import type { PenaltyEntry, RawAgentMetrics, RawGateMetrics, RawIndividualMetricKey } from "@/lib/scoring/types";
 import type { NewQaAuditInput, QaAuditRecord, QaAuditStatus, QaAuditType } from "@/lib/qa/auditDefinitions";
@@ -360,6 +360,17 @@ export class SupabaseRepository implements DataRepository {
       .eq("agent_id", agentId)
       .in("period_id", periodIds)
       .select("period_id");
+    if (error) throw error;
+    return (data ?? []).length;
+  }
+
+  async clearScorecardKpis(agentId: string | null, periodIds: string[]): Promise<number> {
+    if (periodIds.length === 0) return 0;
+    const blanked: Record<string, null> = {};
+    for (const field of SCORECARD_KPI_FIELDS) blanked[INDIVIDUAL_FIELD_COLUMN[field]] = null;
+    let query = this.writeClient.from("performance_entries").update(blanked).in("period_id", periodIds);
+    if (agentId !== null) query = query.eq("agent_id", agentId);
+    const { data, error } = await query.select("period_id");
     if (error) throw error;
     return (data ?? []).length;
   }
