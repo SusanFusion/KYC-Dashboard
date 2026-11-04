@@ -195,7 +195,7 @@ export default async function PenaltiesPage() {
 
           <Card className="mt-4">
             <CardHeader>
-              <CardTitle>Recorded this period</CardTitle>
+              <CardTitle>Penalty log (all periods)</CardTitle>
               {!canSeePenaltyLog && <CardDescription>Visible to Leads/Managers only.</CardDescription>}
             </CardHeader>
             <CardContent>
