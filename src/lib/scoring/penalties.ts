@@ -15,6 +15,8 @@ export interface AppliedPenalty {
   recordedBy: string;
   /** When this entry was actually submitted -- see PenaltyEntry.createdAt. */
   createdAt: string;
+  /** Free-text note typed on the "Record a penalty" form, if any. */
+  note?: string;
   /** Present only for employment track-record actions (deduction is always
    *  0 for these) -- see EMPLOYMENT_ACTIONS in thresholds.ts. */
   status?: PenaltyStatus;
@@ -140,6 +142,7 @@ function resolveEntry(p: PenaltyEntry, sameCodeThisAgent: PenaltyEntry[]): Appli
     occurredOn: p.occurredOn,
     recordedBy: p.recordedBy,
     createdAt: p.createdAt,
+    note: p.note,
     status: def?.status,
   };
 }
