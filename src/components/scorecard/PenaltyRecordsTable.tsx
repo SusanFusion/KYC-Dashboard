@@ -15,10 +15,29 @@ export type RecordedPenaltyRow = {
   count: number;
   occurredOn: string;
   recordedBy: string;
+  /** ISO timestamp of when the entry was actually submitted. */
+  createdAt?: string;
+  note?: string;
   status?: PenaltyStatus;
   agent: string;
   agentId: string;
 };
+
+/** "Oct 5, 2026, 3:42 PM" in Manila time (the team's timezone). The zone is
+ *  pinned so the server render and the browser render always agree. */
+function formatLogged(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Manila",
+  }).format(d);
+}
 
 /** Client component so the agent filter can react instantly without a
  *  server round-trip -- every row for the period is already loaded on the
@@ -74,7 +93,9 @@ export function PenaltyRecordsTable({
               <TableHead>Agent</TableHead>
               <TableHead>Infraction</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Logged on</TableHead>
               <TableHead>Recorded by</TableHead>
+              <TableHead>Note</TableHead>
               <TableHead>Count</TableHead>
               <TableHead className="text-right">Deduction</TableHead>
               <TableHead className="text-right">&nbsp;</TableHead>
@@ -86,7 +107,9 @@ export function PenaltyRecordsTable({
                 <TableCell className="font-medium text-foreground">{p.agent}</TableCell>
                 <TableCell>{p.label}</TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(p.occurredOn)}</TableCell>
+                <TableCell className="whitespace-nowrap text-muted-foreground">{formatLogged(p.createdAt)}</TableCell>
                 <TableCell className="text-muted-foreground">{p.recordedBy}</TableCell>
+                <TableCell className="max-w-xs whitespace-normal text-xs text-muted-foreground">{p.note ? p.note : "—"}</TableCell>
                 <TableCell>{p.count}</TableCell>
                 <TableCell className="text-right">
                   {p.status ? (
