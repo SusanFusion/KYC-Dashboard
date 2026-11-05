@@ -9,6 +9,7 @@ import { GateInfoButton } from "@/components/metrics/GateInfoButton";
 import { TeamVisibilityCards } from "@/components/metrics/TeamVisibilityCards";
 import { loadTeamQualityRating } from "@/lib/qa/teamQualityRating";
 import { Progress } from "@/components/ui/progress";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { RangePicker } from "@/components/shared/RangePicker";
 import { loadRangeDataset, listAvailableWeeks } from "@/lib/data/query";
 import { buildGateScaleTable } from "@/lib/scoring/display";
@@ -81,6 +82,20 @@ export default async function TeamPerformancePage({ searchParams }: { searchPara
   const teamAverage = scoredResults.length
     ? scoredResults.reduce((sum, r) => sum + r.individual.finalScore, 0) / scoredResults.length
     : 0;
+  // Chat volume + CSAT/DSAT counts per agent for the week -- only agents with
+  // any chat data, alphabetical, with a team total row.
+  const chatRows = results
+    .filter((r) => r.chatCounts.totalChats !== null || r.chatCounts.csatCount !== null || r.chatCounts.dsatCount !== null)
+    .sort((a, b) => a.agent.name.localeCompare(b.agent.name));
+  const chatTotals = chatRows.reduce(
+    (t, r) => ({
+      totalChats: t.totalChats + (r.chatCounts.totalChats ?? 0),
+      csatCount: t.csatCount + (r.chatCounts.csatCount ?? 0),
+      dsatCount: t.dsatCount + (r.chatCounts.dsatCount ?? 0),
+    }),
+    { totalChats: 0, csatCount: 0, dsatCount: 0 }
+  );
+  const countText = (n: number | null) => (n === null ? "—" : String(n));
   const { columns, rows } = buildGateScaleTable();
   const multiplierToneRaw = tierTone(gate.overallTier);
 
@@ -168,6 +183,47 @@ export default async function TeamPerformancePage({ searchParams }: { searchPara
               <span className="text-sm text-muted-foreground">/ 3.00</span>
               <Progress value={teamAverage} max={3} className="ml-4 flex-1" />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Chats and CSAT / DSAT by Agent</CardTitle>
+            <CardDescription>Totals across every day imported this week, for each agent with chat data.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {chatRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No chat data for this week yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Agent</TableHead>
+                      <TableHead className="text-right">Total Chats</TableHead>
+                      <TableHead className="text-right">CSAT Count</TableHead>
+                      <TableHead className="text-right">DSAT Count</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {chatRows.map((r) => (
+                      <TableRow key={r.agent.id}>
+                        <TableCell className="font-medium text-foreground">{r.agent.name}</TableCell>
+                        <TableCell className="text-right">{countText(r.chatCounts.totalChats)}</TableCell>
+                        <TableCell className="text-right">{countText(r.chatCounts.csatCount)}</TableCell>
+                        <TableCell className="text-right">{countText(r.chatCounts.dsatCount)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell className="font-semibold text-foreground">Team total</TableCell>
+                      <TableCell className="text-right font-semibold">{chatTotals.totalChats}</TableCell>
+                      <TableCell className="text-right font-semibold">{chatTotals.csatCount}</TableCell>
+                      <TableCell className="text-right font-semibold">{chatTotals.dsatCount}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
