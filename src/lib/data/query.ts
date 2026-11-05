@@ -46,8 +46,19 @@ function emptyRawMetrics(agentId: string, periodId: string): RawAgentMetrics {
   };
 }
 
+/** Raw chat volume and CSAT/DSAT counts for the period (summed across the
+ *  days in a week/month/range) -- shown as plain columns on the scorecard
+ *  list, Overall MTD, Rankings and Team Performance tables. `totalChats` falls
+ *  back to Total Chat Conversations when the CSAT base wasn't reported. */
+export interface ChatCounts {
+  totalChats: number | null;
+  csatCount: number | null;
+  dsatCount: number | null;
+}
+
 export interface AgentPeriodResult extends FullAgentPeriodResult {
   agent: Agent;
+  chatCounts: ChatCounts;
 }
 
 export interface PeriodDataset {
@@ -111,6 +122,11 @@ function computeResults(
   const results: AgentPeriodResult[] = scored.map(({ agent, raw }) =>
     ({
       agent,
+      chatCounts: {
+        totalChats: raw.totalChats ?? raw.totalChatConversations,
+        csatCount: raw.csatCount,
+        dsatCount: raw.dsatCount,
+      },
       ...calculateFullAgentResult({
         rawMetrics: raw,
         rawGate: gateInput,
