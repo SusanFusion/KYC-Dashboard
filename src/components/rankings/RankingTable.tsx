@@ -67,6 +67,11 @@ export interface RankingRow {
   disciplinaryTotal?: number;
   /** The Attendance share of the deduction above (positive number). */
   attendanceTotal?: number;
+  /** Chat volume and CSAT / DSAT counts for the period -- shown when the
+   *  table's `showChatCounts` prop is on. Null = no data. */
+  totalChats?: number | null;
+  csatCount?: number | null;
+  dsatCount?: number | null;
 }
 
 type SortKey = "finalScore" | "name";
@@ -125,10 +130,16 @@ function deductionCell(deductionTotal: number | undefined) {
   return <span className="text-danger">-{total.toFixed(2)}</span>;
 }
 
+function countCell(value: number | null | undefined) {
+  if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>;
+  return <span>{value}</span>;
+}
+
 export function RankingTable({
   rows,
   departments,
   showDeductionColumn = false,
+  showChatCounts = false,
 }: {
   rows: RankingRow[];
   departments: string[];
@@ -136,6 +147,8 @@ export function RankingTable({
    *  Dashboard and Rankings (which also render this table) are unaffected;
    *  only the Overall MTD page turns it on. */
   showDeductionColumn?: boolean;
+  /** Adds "Total Chats", "CSAT Count" and "DSAT Count" columns after the CSAT column. */
+  showChatCounts?: boolean;
 }) {
   const [query, setQuery] = React.useState("");
   const [department, setDepartment] = React.useState("all");
@@ -211,6 +224,9 @@ export function RankingTable({
               <TableHead>Point</TableHead>
               <TableHead>CSAT</TableHead>
               <TableHead>Point</TableHead>
+              {showChatCounts && <TableHead>Total Chats</TableHead>}
+              {showChatCounts && <TableHead>CSAT Count</TableHead>}
+              {showChatCounts && <TableHead>DSAT Count</TableHead>}
               <TableHead>QA Audit</TableHead>
               <TableHead>Point</TableHead>
               {showDeductionColumn && <TableHead>Disciplinary</TableHead>}
@@ -254,6 +270,9 @@ export function RankingTable({
                   <TableCell>{pointCell(r.chatFRTPoint)}</TableCell>
                   <TableCell className="text-muted-foreground">{r.csatDsat}</TableCell>
                   <TableCell>{pointCell(r.csatDsatPoint)}</TableCell>
+                  {showChatCounts && <TableCell>{countCell(r.totalChats)}</TableCell>}
+                  {showChatCounts && <TableCell>{countCell(r.csatCount)}</TableCell>}
+                  {showChatCounts && <TableCell>{countCell(r.dsatCount)}</TableCell>}
                   <TableCell className="text-muted-foreground">{r.qaAudit}</TableCell>
                   <TableCell>{pointCell(r.qaAuditPoint)}</TableCell>
                   {showDeductionColumn && <TableCell>{deductionCell(r.disciplinaryTotal)}</TableCell>}
@@ -300,6 +319,9 @@ export function RankingTable({
                     <TableCell>{pointCell(r.chatFRTPoint)}</TableCell>
                     <TableCell className="text-muted-foreground">{r.csatDsat}</TableCell>
                     <TableCell>{pointCell(r.csatDsatPoint)}</TableCell>
+                  {showChatCounts && <TableCell>{countCell(r.totalChats)}</TableCell>}
+                  {showChatCounts && <TableCell>{countCell(r.csatCount)}</TableCell>}
+                  {showChatCounts && <TableCell>{countCell(r.dsatCount)}</TableCell>}
                     <TableCell className="text-muted-foreground">{r.qaAudit}</TableCell>
                     <TableCell>{pointCell(r.qaAuditPoint)}</TableCell>
                     {showDeductionColumn && <TableCell>{deductionCell(r.disciplinaryTotal)}</TableCell>}
