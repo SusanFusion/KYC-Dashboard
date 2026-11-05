@@ -37,6 +37,11 @@ function metricValue(metrics: MetricScoreBreakdown[], key: IndividualMetricKey) 
   return metrics.find((m) => m.key === key)?.actualDisplay ?? "—";
 }
 
+// Plain count cell (Total Chats / CSAT / DSAT) -- a dash when there's no data.
+function countValue(n: number | null) {
+  return n === null ? "—" : String(n);
+}
+
 // The 0-3 grade a metric earned against its scoring scale (thresholds.ts
 // bands) -- same value that drives that metric's color everywhere else,
 // shown here as its own "Point" column right next to the raw value.
@@ -201,6 +206,9 @@ export default async function ScorecardsPage({
                     <TableHead>Point</TableHead>
                     <TableHead>CSAT</TableHead>
                     <TableHead>Point</TableHead>
+                    <TableHead>Total Chats</TableHead>
+                    <TableHead>CSAT Count</TableHead>
+                    <TableHead>DSAT Count</TableHead>
                     <TableHead>QA Audit</TableHead>
                     <TableHead>Point</TableHead>
                     <TableHead className="text-right">Disciplinary</TableHead>
@@ -250,6 +258,9 @@ export default async function ScorecardsPage({
                         <TableCell>{pointCell(metricPoint(r.individual.metrics, "chatFRT"))}</TableCell>
                         <TableCell className="text-muted-foreground">{metricValue(r.individual.metrics, "csatDsat")}</TableCell>
                         <TableCell>{pointCell(metricPoint(r.individual.metrics, "csatDsat"))}</TableCell>
+                        <TableCell className="text-muted-foreground">{countValue(r.chatCounts.totalChats)}</TableCell>
+                        <TableCell className="text-muted-foreground">{countValue(r.chatCounts.csatCount)}</TableCell>
+                        <TableCell className="text-muted-foreground">{countValue(r.chatCounts.dsatCount)}</TableCell>
                         <TableCell
                           className="text-muted-foreground"
                           title={canSeeQaAudit ? undefined : "Visible to this agent and Leads/Managers only"}
