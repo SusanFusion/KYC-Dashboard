@@ -117,6 +117,9 @@ export default async function MtdPage({ searchParams }: { searchParams: { month?
     chatAvgResponsePoint: r.individual.metrics.find((m) => m.key === "chatAvgResponse")?.grade ?? null,
     chatFRTPoint: r.individual.metrics.find((m) => m.key === "chatFRT")?.grade ?? null,
     csatDsatPoint: r.individual.metrics.find((m) => m.key === "csatDsat")?.grade ?? null,
+    totalChats: r.chatCounts.totalChats,
+    csatCount: r.chatCounts.csatCount,
+    dsatCount: r.chatCounts.dsatCount,
     qaAuditPoint: r.individual.metrics.find((m) => m.key === "qaAudit")?.grade ?? null,
     // Points deducted from this agent's score by the penalties applied across
     // the month so far, split into Disciplinary and Attendance -- shown as
@@ -210,7 +213,7 @@ export default async function MtdPage({ searchParams }: { searchParams: { month?
             <CardDescription>Every agent&apos;s score averaged across each day imported so far this month.</CardDescription>
           </CardHeader>
           <CardContent className="p-5">
-            <RankingTable rows={rankingRows} departments={teams.map((t) => t.name)} showDeductionColumn />
+            <RankingTable rows={rankingRows} departments={teams.map((t) => t.name)} showDeductionColumn showChatCounts />
           </CardContent>
         </Card>
 
