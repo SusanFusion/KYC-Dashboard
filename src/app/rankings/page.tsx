@@ -102,6 +102,9 @@ export default async function RankingsPage() {
     chatAvgResponsePoint: r.individual.metrics.find((m) => m.key === "chatAvgResponse")?.grade ?? null,
     chatFRTPoint: r.individual.metrics.find((m) => m.key === "chatFRT")?.grade ?? null,
     csatDsatPoint: r.individual.metrics.find((m) => m.key === "csatDsat")?.grade ?? null,
+    totalChats: r.chatCounts.totalChats,
+    csatCount: r.chatCounts.csatCount,
+    dsatCount: r.chatCounts.dsatCount,
     qaAuditPoint: r.individual.metrics.find((m) => m.key === "qaAudit")?.grade ?? null,
   }));
 
@@ -138,7 +141,7 @@ export default async function RankingsPage() {
 
         <Card className="mt-4">
           <CardContent className="p-5">
-            <RankingTable rows={rows} departments={teams.map((t) => t.name)} />
+            <RankingTable rows={rows} departments={teams.map((t) => t.name)} showChatCounts />
           </CardContent>
         </Card>
 
