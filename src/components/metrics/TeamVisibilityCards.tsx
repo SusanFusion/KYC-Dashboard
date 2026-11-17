@@ -3,8 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricBlockCard } from "@/components/metrics/MetricBlockCard";
 import type { Tone } from "@/components/dashboard/PerformanceBadge";
+import type { RejectionQualityState } from "@/lib/rejections/rejectionQuality";
 
-// Color of the Team Quality Rating. Display only: it never feeds the Business
+// Color of the Team QA Average. Display only: it never feeds the Business
 // Gate or any score. 90% and above is green, 80% up to (not including) 90% is
 // amber, below 80% is red. The check uses the same one-decimal number that is
 // shown on the card, so 89.9% reads amber and 90.0% reads green.
@@ -48,24 +49,31 @@ function QualityBadge({ pct }: { pct: number | null }) {
 }
 
 /**
- * Team Quality Rating and Team Rejection Rate, side by side.
+ * Team QA Average, Rejection Quality and Team Rejection Rate, side by side.
  *
- * Both are here for visibility only: neither is a Business Gate metric, so
- * neither has a weight and neither changes the Gate multiplier or any score.
- * The Team Quality Rating is color-coded (green 90%+, amber 80% to under 90%,
- * red under 80%); the Rejection Rate has no color. Used on Team Performance
- * and the Dashboard.
+ * All three are here for visibility only: none is a Business Gate metric, so
+ * none has a weight and none changes the Gate multiplier or any score.
+ *  - Team QA Average: the average of every agent's QA Audit score for the
+ *    period on screen. Color-coded (green 90%+, amber 80% to under 90%, red
+ *    under 80%).
+ *  - Rejection Quality: read from the Rejection Audit Tracker app. No color.
+ *  - Team Rejection Rate: typed in by hand in Data Import. No color.
+ * Used on the Dashboard, Team Performance and Overall MTD.
  */
 export function TeamVisibilityCards({
   periodNoun,
-  qualityRatingPct,
-  qualityAuditCount,
+  qaAveragePct,
+  qaAgentCount,
+  rejectionQualityPct,
+  rejectionQualityState,
   rejectionRatePct,
 }: {
   /** "this week", "this month" -- how the period is worded under each figure. */
   periodNoun: string;
-  qualityRatingPct: number | null;
-  qualityAuditCount: number;
+  qaAveragePct: number | null;
+  qaAgentCount: number;
+  rejectionQualityPct: number | null;
+  rejectionQualityState: RejectionQualityState;
   rejectionRatePct: number | null;
 }) {
   return (
@@ -75,26 +83,41 @@ export function TeamVisibilityCards({
           Team Quality &amp; Rejection
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
         </CardTitle>
-        <CardDescription>Shown for visibility only. These two are not part of the Business Gate and do not change any score.</CardDescription>
+        <CardDescription>Shown for visibility only. These are not part of the Business Gate and do not change any score.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <MetricBlockCard
-            label="Team Quality Rating"
-            value={qualityRatingPct === null ? "—" : `${qualityRatingPct.toFixed(1)}%`}
-            tone={qualityTone(qualityRatingPct)}
-            badge={<QualityBadge pct={qualityRatingPct} />}
+            label="Team QA Average"
+            value={qaAveragePct === null ? "\u2014" : `${qaAveragePct.toFixed(1)}%`}
+            tone={qualityTone(qaAveragePct)}
+            badge={<QualityBadge pct={qaAveragePct} />}
             weightLabel={
-              qualityRatingPct === null
-                ? "No QA audits recorded yet"
-                : `Average of all ${qualityAuditCount} QA audit${qualityAuditCount === 1 ? "" : "s"} recorded in the app`
+              qaAveragePct === null
+                ? `No QA scores recorded ${periodNoun} yet`
+                : `Average of ${qaAgentCount} agent${qaAgentCount === 1 ? "" : "s"}\u2019 QA scores ${periodNoun}`
             }
-            tooltip="The overall average score of every QA audit recorded in the app, published or not. It is the same number on every page. Green is 90% and above, Amber is 80% up to under 90%, Red is under 80%."
+            tooltip="The average of each agent's QA Audit score for the period on screen, the same QA figure shown on each Individual Scorecard. Each agent counts once; an agent with no QA score is left out. Green is 90% and above, Amber is 80% up to under 90%, Red is under 80%."
+            emphasized
+          />
+          <MetricBlockCard
+            label="Rejection Quality"
+            value={rejectionQualityPct === null ? "\u2014" : `${rejectionQualityPct.toFixed(1)}%`}
+            tone="muted"
+            badge={<Badge variant="outline">Rejection Audit Tracker</Badge>}
+            weightLabel={
+              rejectionQualityState === "ok"
+                ? `From the Rejection Audit Tracker, ${periodNoun}`
+                : rejectionQualityState === "not_configured"
+                  ? "Not connected to the Rejection Audit Tracker yet"
+                  : "Couldn\u2019t reach the Rejection Audit Tracker"
+            }
+            tooltip="Read from the separate Rejection Audit Tracker app for the same period shown on this page. It is not a Business Gate metric and does not change any score."
             emphasized
           />
           <MetricBlockCard
             label="Team Rejection Rate"
-            value={rejectionRatePct === null ? "—" : `${rejectionRatePct.toFixed(2)}%`}
+            value={rejectionRatePct === null ? "\u2014" : `${rejectionRatePct.toFixed(2)}%`}
             tone="muted"
             badge={<Badge variant="outline">Visibility only</Badge>}
             weightLabel={rejectionRatePct === null ? `No rejection rate entered ${periodNoun} yet` : `Average of the daily figures entered ${periodNoun}`}
