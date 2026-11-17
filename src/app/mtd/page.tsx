@@ -11,6 +11,9 @@ import { GateMultiplierConfetti } from "@/components/metrics/GateMultiplierConfe
 import { Progress } from "@/components/ui/progress";
 import { RangePicker } from "@/components/shared/RangePicker";
 import { RankingTable, type RankingRow } from "@/components/rankings/RankingTable";
+import { TeamVisibilityCards } from "@/components/metrics/TeamVisibilityCards";
+import { computeTeamQaAverage } from "@/lib/qa/teamQaAverage";
+import { loadRejectionQuality } from "@/lib/rejections/rejectionQuality";
 import { loadRangeDataset, listAvailableMonths } from "@/lib/data/query";
 import { buildGateScaleTable } from "@/lib/scoring/display";
 import { GATE_TIER_SCORES, hasSufficientDataCoverage } from "@/lib/scoring/thresholds";
@@ -50,7 +53,7 @@ export default async function MtdPage({ searchParams }: { searchParams: { month?
 
   const selectedMonth = months.find((m) => m.key === searchParams.month) ?? months[0]!;
   const monthThruLabel = `${selectedMonth.label} (thru ${formatDate(selectedMonth.end)})`;
-  const { results, ranked, teams } = await loadRangeDataset({
+  const { results, ranked, teams, gate: rawGate } = await loadRangeDataset({
     start: selectedMonth.start,
     end: selectedMonth.end,
     label: monthThruLabel,
@@ -58,6 +61,9 @@ export default async function MtdPage({ searchParams }: { searchParams: { month?
     type: "month-to-date",
   });
   const gate = results[0]?.gate;
+  // Visibility only -- neither of these touches the Business Gate or any score.
+  const qaAverage = computeTeamQaAverage(results);
+  const rejectionQuality = await loadRejectionQuality({ start: selectedMonth.start, end: selectedMonth.end });
 
   const monthPicker = (
     <RangePicker paramName="month" current={selectedMonth.key} options={months.map((m) => ({ value: m.key, label: m.label }))} />
@@ -189,6 +195,17 @@ export default async function MtdPage({ searchParams }: { searchParams: { month?
             <GateCalculationDetails gate={gate} />
           </CardContent>
         </Card>
+
+        <div className="mt-4">
+          <TeamVisibilityCards
+            periodNoun="this month"
+            qaAveragePct={qaAverage.averagePct}
+            qaAgentCount={qaAverage.agentCount}
+            rejectionQualityPct={rejectionQuality.pct}
+            rejectionQualityState={rejectionQuality.state}
+            rejectionRatePct={rawGate?.teamRejectionRatePct ?? null}
+          />
+        </div>
 
         <Card className="mt-4">
           <CardHeader>
