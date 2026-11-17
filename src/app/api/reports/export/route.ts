@@ -6,6 +6,8 @@ import { generatePeriodReportHtml } from "@/lib/reports/generateReportHtml";
 import { generateWeeklyReportHtml, type WeeklyReportWeekData } from "@/lib/reports/weeklyReportHtml";
 import { generateMtdReportHtml } from "@/lib/reports/mtdReportHtml";
 import { loadMtdReportData } from "@/lib/data/mtdReportData";
+import { computeTeamQaAverage } from "@/lib/qa/teamQaAverage";
+import { loadRejectionQuality } from "@/lib/rejections/rejectionQuality";
 import { requireActionAccess } from "@/lib/auth/actionAccess";
 import { APP_NAME } from "@/lib/appConfig";
 import { slugify } from "@/lib/utils";
@@ -94,10 +96,11 @@ async function buildWeekData(start: string, end: string, repo: DataRepository): 
     id: `week-${start}`,
     type: "weekly",
   };
-  const [dataset, allPenalties, allQaAudits] = await Promise.all([
+  const [dataset, allPenalties, allQaAudits, rejection] = await Promise.all([
     loadRangeDataset(spec),
     repo.getPenalties(),
     repo.getQaAudits(),
+    loadRejectionQuality({ start, end }),
   ]);
   const penaltyCount = allPenalties
     .filter((p) => p.occurredOn >= start && p.occurredOn <= end)
@@ -110,6 +113,7 @@ async function buildWeekData(start: string, end: string, repo: DataRepository): 
     dataset,
     penaltyCount,
     qaCount,
+    teamQuality: { qa: computeTeamQaAverage(dataset.results), rejection },
   };
 }
 
