@@ -13,12 +13,13 @@
 // the tracker can answer for that week or month. The response must be JSON
 // with the percentage (0 to 100) in `rejectionQualityPct`, for example
 //   { "rejectionQualityPct": 94.2 }
+// or `null` when nothing was audited in that period.
 //
 // Shown for visibility only: it is not a Business Gate metric and never
 // changes the Gate multiplier or any score. If the endpoint is not set up or
 // cannot be reached, the card says so and the rest of the page loads normally.
 
-export type RejectionQualityState = "ok" | "not_configured" | "unavailable";
+export type RejectionQualityState = "ok" | "no_data" | "not_configured" | "unavailable";
 
 export interface RejectionQuality {
   pct: number | null;
@@ -54,7 +55,11 @@ export async function loadRejectionQuality(range: { start: string; end: string }
     });
     if (!res.ok) return { pct: null, state: "unavailable" };
 
-    const pct = readPct(await res.json());
+    const body: unknown = await res.json();
+    if (body && typeof body === "object" && (body as Record<string, unknown>).rejectionQualityPct === null) {
+      return { pct: null, state: "no_data" };
+    }
+    const pct = readPct(body);
     return pct === null ? { pct: null, state: "unavailable" } : { pct, state: "ok" };
   } catch {
     return { pct: null, state: "unavailable" };
