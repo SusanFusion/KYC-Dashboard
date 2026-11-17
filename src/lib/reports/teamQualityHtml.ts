@@ -80,7 +80,7 @@ function fmtDeduction(v: number): string {
  * the Base Score before penalties and the Final Score after, so it is clear
  * how much the Disciplinary and Attendance penalties moved each scorecard.
  * Every figure is read from the same per-agent result the Individual
- * Scorecard shows. Active agents only; largest deduction first, then by name.
+ * Scorecard shows. Active agents only, ranked by Final Score from highest to lowest (agents with no data last, ties by name).
  * periodNoun: "this week" or "this month".
  */
 export function renderAgentQualityPenaltySection(results: AgentPeriodResult[], periodNoun: string): string {
@@ -100,7 +100,7 @@ export function renderAgentQualityPenaltySection(results: AgentPeriodResult[], p
         hasData: r.individual.metrics.some((m) => !m.excluded),
       };
     })
-    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+    .sort((a, b) => (b.hasData ? b.final : -1) - (a.hasData ? a.final : -1) || a.name.localeCompare(b.name));
 
   if (rows.length === 0) return "";
 
@@ -131,7 +131,7 @@ export function renderAgentQualityPenaltySection(results: AgentPeriodResult[], p
   return `
     <div style="background:#fff;border:1px solid ${BORDER};border-left:4px solid hsl(226 64% 52%);border-radius:10px;padding:20px 22px;margin-bottom:20px;">
       <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:${INK};">\u{1F4CB} Agent Quality Scores &amp; Penalty Deductions</p>
-      <p style="margin:0 0 14px;font-size:12px;color:${MUTED};">Each agent\u2019s QA Audit score ${periodNoun}, and how many points the Disciplinary and Attendance penalties took off their score (Base Score minus deductions = Final Score). Largest deduction first. ${withPenalty} of ${rows.length} agent${rows.length === 1 ? "" : "s"} had a deduction, ${totalDeducted.toFixed(2)} points in total.</p>
+      <p style="margin:0 0 14px;font-size:12px;color:${MUTED};">Each agent\u2019s QA Audit score ${periodNoun}, and how many points the Disciplinary and Attendance penalties took off their score (Base Score minus deductions = Final Score). Ranked by Final Score, highest to lowest. ${withPenalty} of ${rows.length} agent${rows.length === 1 ? "" : "s"} had a deduction, ${totalDeducted.toFixed(2)} points in total.</p>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
