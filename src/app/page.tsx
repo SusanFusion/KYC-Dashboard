@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Target, Users, Trophy, Gauge, ArrowRight, Sparkles } from "lucide-react";
 import { GateInfoButton } from "@/components/metrics/GateInfoButton";
 import { TeamVisibilityCards } from "@/components/metrics/TeamVisibilityCards";
-import { loadTeamQualityRating } from "@/lib/qa/teamQualityRating";
+import { computeTeamQaAverage } from "@/lib/qa/teamQaAverage";
+import { loadRejectionQuality } from "@/lib/rejections/rejectionQuality";
 import { TopHeader } from "@/components/layout/TopHeader";
 import { PageShell } from "@/components/layout/PageShell";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
@@ -120,7 +121,8 @@ export default async function DashboardPage() {
     type: "month-to-date",
   });
   // Visibility only -- neither of these touches the Business Gate or any score.
-  const quality = await loadTeamQualityRating();
+  const qaAverage = computeTeamQaAverage(results);
+  const rejectionQuality = await loadRejectionQuality({ start: selectedMonth.start, end: selectedMonth.end });
 
   const teamAverage = results.length
     ? results.reduce((sum, r) => sum + r.individual.finalScore, 0) / results.length
@@ -273,8 +275,10 @@ export default async function DashboardPage() {
         <div className="mt-4">
           <TeamVisibilityCards
             periodNoun="this month"
-            qualityRatingPct={quality.ratingPct}
-            qualityAuditCount={quality.auditCount}
+            qaAveragePct={qaAverage.averagePct}
+            qaAgentCount={qaAverage.agentCount}
+            rejectionQualityPct={rejectionQuality.pct}
+            rejectionQualityState={rejectionQuality.state}
             rejectionRatePct={rawGate?.teamRejectionRatePct ?? null}
           />
         </div>
