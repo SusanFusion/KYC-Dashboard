@@ -12,6 +12,11 @@ import type { RejectionQualityState } from "@/lib/rejections/rejectionQuality";
 export const QUALITY_GREEN_MIN = 90;
 export const QUALITY_AMBER_MIN = 80;
 
+// Passing mark for the Rejection Quality / Markdown Percentage. At or above it
+// the card reads Passing (green); below it, Below passing mark (red). Display
+// only: it never feeds the Business Gate or any score.
+export const REJECTION_QUALITY_PASSING_MARK = 95;
+
 function qualityTone(pct: number | null): Tone {
   if (pct === null) return "muted";
   if (pct >= QUALITY_GREEN_MIN) return "success";
@@ -49,15 +54,15 @@ function QualityBadge({ pct }: { pct: number | null }) {
 }
 
 /**
- * Team QA Average, Rejection Quality and Team Rejection Rate, side by side.
+ * Team QA Average and Rejection Quality / Markdown Percentage, side by side.
  *
- * All three are here for visibility only: none is a Business Gate metric, so
- * none has a weight and none changes the Gate multiplier or any score.
+ * Both are here for visibility only: neither is a Business Gate metric, so
+ * neither has a weight and neither changes the Gate multiplier or any score.
  *  - Team QA Average: the average of every agent's QA Audit score for the
  *    period on screen. Color-coded (green 90%+, amber 80% to under 90%, red
  *    under 80%).
- *  - Rejection Quality: read from the Rejection Audit Tracker app. No color.
- *  - Team Rejection Rate: typed in by hand in Data Import. No color.
+ *  - Rejection Quality / Markdown Percentage: read from the Rejection Audit
+ *    Tracker app. Passing mark 95%: green at or above it, red below it.
  * Used on the Dashboard, Team Performance and Overall MTD.
  */
 export function TeamVisibilityCards({
@@ -66,7 +71,6 @@ export function TeamVisibilityCards({
   qaAgentCount,
   rejectionQualityPct,
   rejectionQualityState,
-  rejectionRatePct,
 }: {
   /** "this week", "this month" -- how the period is worded under each figure. */
   periodNoun: string;
@@ -74,8 +78,10 @@ export function TeamVisibilityCards({
   qaAgentCount: number;
   rejectionQualityPct: number | null;
   rejectionQualityState: RejectionQualityState;
-  rejectionRatePct: number | null;
+  /** No longer shown. Kept optional so existing pages that still pass it compile. */
+  rejectionRatePct?: number | null;
 }) {
+  const rejectionPassing = rejectionQualityPct !== null && rejectionQualityPct >= REJECTION_QUALITY_PASSING_MARK;
   return (
     <Card>
       <CardHeader>
@@ -86,7 +92,7 @@ export function TeamVisibilityCards({
         <CardDescription>Shown for visibility only. These are not part of the Business Gate and do not change any score.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <MetricBlockCard
             label="Team QA Average"
             value={qaAveragePct === null ? "\u2014" : `${qaAveragePct.toFixed(1)}%`}
@@ -101,27 +107,32 @@ export function TeamVisibilityCards({
             emphasized
           />
           <MetricBlockCard
-            label="Rejection Quality"
+            label="Rejection Quality/Markdown Percentage"
             value={rejectionQualityPct === null ? "\u2014" : `${rejectionQualityPct.toFixed(1)}%`}
-            tone="muted"
-            badge={<Badge variant="outline">Rejection Audit Tracker</Badge>}
+            tone={rejectionQualityPct === null ? "muted" : rejectionPassing ? "success" : "danger"}
+            badge={
+              rejectionQualityPct === null ? (
+                <Badge variant="outline">Rejection Audit Tracker</Badge>
+              ) : rejectionPassing ? (
+                <Badge variant="success">
+                  <CheckCircle2 className="h-3 w-3" /> Passing
+                </Badge>
+              ) : (
+                <Badge variant="danger">
+                  <XCircle className="h-3 w-3" /> Below passing mark
+                </Badge>
+              )
+            }
             weightLabel={
               rejectionQualityState === "ok"
-                ? `From the Rejection Audit Tracker, ${periodNoun}`
-                : rejectionQualityState === "not_configured"
+                ? `Passing mark ${REJECTION_QUALITY_PASSING_MARK}% \u00b7 from the Rejection Audit Tracker, ${periodNoun}`
+                : rejectionQualityState === "no_data"
+                  ? `No audited items in the tracker ${periodNoun} yet`
+                  : rejectionQualityState === "not_configured"
                   ? "Not connected to the Rejection Audit Tracker yet"
                   : "Couldn\u2019t reach the Rejection Audit Tracker"
             }
-            tooltip="Read from the separate Rejection Audit Tracker app for the same period shown on this page. It is not a Business Gate metric and does not change any score."
-            emphasized
-          />
-          <MetricBlockCard
-            label="Team Rejection Rate"
-            value={rejectionRatePct === null ? "\u2014" : `${rejectionRatePct.toFixed(2)}%`}
-            tone="muted"
-            badge={<Badge variant="outline">Visibility only</Badge>}
-            weightLabel={rejectionRatePct === null ? `No rejection rate entered ${periodNoun} yet` : `Average of the daily figures entered ${periodNoun}`}
-            tooltip="Typed in by hand each day in Data Import, Manual Entry. A week or month is the plain average of the days that have a figure."
+            tooltip={`Read from the separate Rejection Audit Tracker app for the same period shown on this page: the share of audited rejections with no markdown (incorrect rejection, inaccurate reason or inaccurate email template). Passing mark is ${REJECTION_QUALITY_PASSING_MARK}%. It is not a Business Gate metric and does not change any score.`}
             emphasized
           />
         </div>
