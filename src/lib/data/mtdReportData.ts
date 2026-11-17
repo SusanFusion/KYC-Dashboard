@@ -16,6 +16,8 @@ import {
   GATE_METRICS,
   hasSufficientDataCoverage,
 } from "@/lib/scoring";
+import { computeTeamQaAverage, type TeamQaAverage } from "@/lib/qa/teamQaAverage";
+import { loadRejectionQuality, type RejectionQuality } from "@/lib/rejections/rejectionQuality";
 import { getDailyPeriods, loadRangeDataset, type PeriodDataset, type AgentPeriodResult, type RangeSpec } from "./query";
 import { monthRange, monthKey as toMonthKey, formatMonthLabel, formatDayLabel, type DateRange } from "./dateRanges";
 import type { Agent } from "@/types/domain";
@@ -116,6 +118,8 @@ export interface MtdReportData {
   range: DateRange;
   generatedLabel: string;
   currentDataset: PeriodDataset;
+  /** Team QA Average and Rejection Quality for the month, shown in the report for visibility only. */
+  teamQuality: { qa: TeamQaAverage; rejection: RejectionQuality };
   agents: MtdAgentSummary[];
   rankableAgents: MtdAgentSummary[];
   qaCount: number;
@@ -200,8 +204,9 @@ export async function loadMtdReportData(monthKeyParam?: string): Promise<MtdRepo
 
   const dayPeriods = dayPeriodsAll.filter((p) => p.startDate >= range.start && p.endDate <= range.end);
 
-  const [currentDataset, rawByDay, gateByDay, allQaAudits, allPenalties] = await Promise.all([
+  const [currentDataset, rejectionQuality, rawByDay, gateByDay, allQaAudits, allPenalties] = await Promise.all([
     loadRangeDataset(spec),
+    loadRejectionQuality({ start: range.start, end: range.end }),
     Promise.all(dayPeriods.map((p) => repo.getRawMetrics(p.id))),
     Promise.all(dayPeriods.map((p) => repo.getGateMetrics(p.id))),
     repo.getQaAudits(),
@@ -347,6 +352,7 @@ export async function loadMtdReportData(monthKeyParam?: string): Promise<MtdRepo
     range,
     generatedLabel,
     currentDataset,
+    teamQuality: { qa: computeTeamQaAverage(currentDataset.results), rejection: rejectionQuality },
     agents,
     rankableAgents,
     qaCount,
