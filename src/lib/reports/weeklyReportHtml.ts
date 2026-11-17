@@ -24,7 +24,7 @@ import type { DateRange } from "../data/dateRanges";
 import type { GateMetricKey, GateTier, IndividualMetricKey } from "../scoring/types";
 import { APP_NAME } from "../appConfig";
 import { renderGateReference, renderGateInfoButton } from "./gateReferenceHtml";
-import { renderTeamQualitySection, type ReportTeamQuality } from "./teamQualityHtml";
+import { renderTeamQualitySection, renderAgentQualityPenaltySection, type ReportTeamQuality } from "./teamQualityHtml";
 
 export interface WeeklyReportWeekData {
   range: DateRange;
@@ -588,6 +588,7 @@ export function generateWeeklyReportHtml(thisWeek: WeeklyReportWeekData, lastWee
   <div style="max-width:920px;margin:0 auto;padding:32px 24px 60px;">
     ${header}
     ${thisWeek.teamQuality ? renderTeamQualitySection(thisWeek.teamQuality, "this week") : ""}
+    ${renderAgentQualityPenaltySection(thisWeek.dataset.results, "this week")}
     ${businessGateSection}
     ${gateReferenceSection}
     ${scoreboardSection}
