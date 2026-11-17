@@ -24,6 +24,7 @@ import type { DateRange } from "../data/dateRanges";
 import type { GateMetricKey, GateTier, IndividualMetricKey } from "../scoring/types";
 import { APP_NAME } from "../appConfig";
 import { renderGateReference, renderGateInfoButton } from "./gateReferenceHtml";
+import { renderTeamQualitySection, type ReportTeamQuality } from "./teamQualityHtml";
 
 export interface WeeklyReportWeekData {
   range: DateRange;
@@ -33,6 +34,8 @@ export interface WeeklyReportWeekData {
   penaltyCount: number;
   /** Count of QA audit records whose auditDate falls inside this week. */
   qaCount: number;
+  /** Team QA Average and Rejection Quality for the week; omitted = the block is left out. */
+  teamQuality?: ReportTeamQuality;
 }
 
 function escapeHtml(s: string): string {
@@ -584,6 +587,7 @@ export function generateWeeklyReportHtml(thisWeek: WeeklyReportWeekData, lastWee
 <body style="margin:0;padding:0;background:#f4f5f7;font-family:Inter,system-ui,-apple-system,sans-serif;color:${COLOR.ink};">
   <div style="max-width:920px;margin:0 auto;padding:32px 24px 60px;">
     ${header}
+    ${thisWeek.teamQuality ? renderTeamQualitySection(thisWeek.teamQuality, "this week") : ""}
     ${businessGateSection}
     ${gateReferenceSection}
     ${scoreboardSection}
