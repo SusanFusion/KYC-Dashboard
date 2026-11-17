@@ -14,6 +14,7 @@
 // mtdReportData.ts and passed in, so this module has no data-access
 // concerns of its own.
 
+import { renderTeamQualitySection } from "./teamQualityHtml";
 import type { MtdReportData, MtdStreak } from "../data/mtdReportData";
 import { INDIVIDUAL_METRICS, GATE_METRICS, SCORE_PASS_THRESHOLD } from "../scoring/thresholds";
 import { formatSeconds, formatMinutesValue } from "../data/time";
@@ -574,6 +575,7 @@ export function generateMtdReportHtml(data: MtdReportData): string {
     ${header}
     ${alertsSection}
     ${execSummarySection}
+    ${renderTeamQualitySection(data.teamQuality, "this month")}
     ${businessGateSection}
     ${gateReferenceSection}
     ${agentRankingsSection}
