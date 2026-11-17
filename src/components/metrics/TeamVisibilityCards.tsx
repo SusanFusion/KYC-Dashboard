@@ -4,18 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MetricBlockCard } from "@/components/metrics/MetricBlockCard";
 import type { Tone } from "@/components/dashboard/PerformanceBadge";
 import type { RejectionQualityState } from "@/lib/rejections/rejectionQuality";
+import { QUALITY_GREEN_MIN, QUALITY_AMBER_MIN, REJECTION_QUALITY_PASSING_MARK } from "@/lib/qa/qualityMarks";
 
-// Color of the Team QA Average. Display only: it never feeds the Business
-// Gate or any score. 90% and above is green, 80% up to (not including) 90% is
-// amber, below 80% is red. The check uses the same one-decimal number that is
-// shown on the card, so 89.9% reads amber and 90.0% reads green.
-export const QUALITY_GREEN_MIN = 90;
-export const QUALITY_AMBER_MIN = 80;
-
-// Passing mark for the Rejection Quality / Markdown Percentage. At or above it
-// the card reads Passing (green); below it, Below passing mark (red). Display
-// only: it never feeds the Business Gate or any score.
-export const REJECTION_QUALITY_PASSING_MARK = 95;
+// Display only: the marks live in qualityMarks.ts so the exported reports use
+// the same ones. They never feed the Business Gate or any score.
 
 function qualityTone(pct: number | null): Tone {
   if (pct === null) return "muted";
