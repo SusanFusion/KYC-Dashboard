@@ -7,7 +7,8 @@ import { ScoringScaleTable } from "@/components/metrics/ScoringScaleTable";
 import { GateCalculationDetails } from "@/components/metrics/GateCalculationDetails";
 import { GateInfoButton } from "@/components/metrics/GateInfoButton";
 import { TeamVisibilityCards } from "@/components/metrics/TeamVisibilityCards";
-import { loadTeamQualityRating } from "@/lib/qa/teamQualityRating";
+import { computeTeamQaAverage } from "@/lib/qa/teamQaAverage";
+import { loadRejectionQuality } from "@/lib/rejections/rejectionQuality";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { RangePicker } from "@/components/shared/RangePicker";
@@ -56,7 +57,8 @@ export default async function TeamPerformancePage({ searchParams }: { searchPara
   });
   const gate = results[0]?.gate;
   // Visibility only -- neither of these touches the Business Gate above.
-  const quality = await loadTeamQualityRating();
+  const qaAverage = computeTeamQaAverage(results);
+  const rejectionQuality = await loadRejectionQuality({ start: selectedWeek.start, end: selectedWeek.end });
 
   const weekPicker = (
     <RangePicker paramName="week" current={selectedWeek.start} options={weeks.map((w) => ({ value: w.start, label: w.label }))} />
@@ -163,8 +165,10 @@ export default async function TeamPerformancePage({ searchParams }: { searchPara
         <div className="mt-4">
           <TeamVisibilityCards
             periodNoun="this week"
-            qualityRatingPct={quality.ratingPct}
-            qualityAuditCount={quality.auditCount}
+            qaAveragePct={qaAverage.averagePct}
+            qaAgentCount={qaAverage.agentCount}
+            rejectionQualityPct={rejectionQuality.pct}
+            rejectionQualityState={rejectionQuality.state}
             rejectionRatePct={rawGate?.teamRejectionRatePct ?? null}
           />
         </div>
