@@ -45,6 +45,10 @@ export const ROSTER: RosterEntry[] = [
   { email: "patricia.cruz@fusionmarkets.com", name: "Patricia Cruz", role: "agent", agentId: "patricia-marie-cruz" },
   { email: "yuri.bulahan@fusionmarkets.com", name: "Yuri Bulahan", role: "agent", agentId: "yuri-bulahan" },
   { email: "yvonne.tang@fusionmarkets.com", name: "Yvonne Tang", role: "agent", agentId: "yvonne-tang" },
+  { email: "lizbeth.belmont@fusionmarkets.com", name: "Lizbeth Belmont", role: "agent", agentId: "lizbeth-belmont" },
+  { email: "fernan.hernandez@fusionmarkets.com", name: "Fernan Hernandez", role: "agent", agentId: "fernan-hernandez" },
+  { email: "jovie.generillo@fusionmarkets.com", name: "Jovie Generillo", role: "agent", agentId: "jovie-generillo" },
+  { email: "reina.lojo@fusionmarkets.com", name: "Reina Lojo", role: "agent", agentId: "reina-lojo" },
 
   // KYC Leads / Auditors (leads)
   { email: "susan.gonzalez@fusionmarkets.com", name: "Susan Gonzalez", role: "lead", agentId: null },
