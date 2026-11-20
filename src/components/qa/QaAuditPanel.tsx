@@ -175,14 +175,16 @@ function bandBarClass(band: 0 | 1 | 2 | 3 | null): string {
 function ScorePreview({
   answers,
   auditType,
+  auditDate,
   sticky = false,
 }: {
   answers: Record<string, QaAnswerValue | undefined>;
   auditType: QaAuditType;
+  auditDate: string;
   sticky?: boolean;
 }) {
   const definition = getAuditDefinition(auditType);
-  const score = computeAuditScore(answers, definition);
+  const score = computeAuditScore(answers, definition, auditDate);
   const pct = score.percentage;
   const barWidth = pct === null ? 0 : Math.max(0, Math.min(100, pct));
   return (
@@ -461,7 +463,7 @@ function SubmitAuditForm({
         </CardContent>
       </Card>
 
-      <ScorePreview answers={answers} auditType={auditType} sticky={editing !== null} />
+      <ScorePreview answers={answers} auditType={auditType} auditDate={auditDate} sticky={editing !== null} />
 
       {definition.sections.map((section) => (
         <Card key={section.key} className={section.autoFail ? "border-danger/40" : undefined}>
