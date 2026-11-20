@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     // Recomputed server-side from the submitted answers — never trust a
     // client-supplied score, even though the UI shows a live preview of the
     // same calculation as you fill the form in.
-    const score = computeAuditScore(answers, definition);
+    const score = computeAuditScore(answers, definition, body.auditDate);
 
     const record = await repo.createQaAudit({
       auditType: body.auditType,
