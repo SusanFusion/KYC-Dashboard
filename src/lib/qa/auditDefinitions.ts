@@ -56,8 +56,9 @@ export interface AuditSectionDef {
    *  so the Yes/No polarity is intentionally flipped here versus every other
    *  section: "No" (the violation did not occur) is the normal, no-penalty
    *  answer and earns the point same as "Yes" does elsewhere; "Yes" (the
-   *  violation did occur) earns no point AND forces the whole audit's band
-   *  to 0, regardless of its overall percentage. See computeAuditScore(). */
+   *  violation did occur) earns no point AND makes the whole audit an
+   *  Auto-Fail: 0% (band 0) for audits dated 1 Nov 2026 or later, band 0 only
+   *  for earlier ones. See computeAuditScore() and AUTO_FAIL_ZERO_FROM. */
   autoFail?: boolean;
   questions: AuditQuestionDef[];
 }
@@ -386,6 +387,11 @@ export function buildDefaultAnswers(def: AuditDefinition): Record<string, QaAnsw
   return defaults;
 }
 
+/** Audits dated on or after this day (the "Audit date" on the form) score 0%
+ *  when an Auto-Fail is triggered. Audits dated before it keep the earlier
+ *  rule: the percentage stays as computed and only the band drops to 0. */
+export const AUTO_FAIL_ZERO_FROM = "2026-11-01";
+
 export interface ComputedAuditScore {
   /** For Applications: fixed at the form's full question count and never
    *  shrinks, even for N/A answers. For Emails/Chats (naExcludedFromDenominator):
@@ -413,11 +419,22 @@ export interface ComputedAuditScore {
  *   by one for every N/A.
  * Auto-Fail sections have flipped Yes/No polarity either way (see the doc
  * comment on AuditSectionDef.autoFail) — "No" earns the point same as
- * "Yes" does everywhere else, and "Yes" earns no point and forces band to
- * 0 regardless of the computed percentage (the percentage itself is still
- * returned/displayed, per those forms' own notes).
+ * "Yes" does everywhere else, and "Yes" earns no point and makes the audit
+ * an Auto-Fail. For an audit dated on or after AUTO_FAIL_ZERO_FROM (1 Nov
+ * 2026) the percentage is forced to 0% and the band to 0, whatever the other
+ * answers add up to. For an earlier audit date only the band is forced to 0
+ * and the percentage stays as computed (the original rule). totalPoints /
+ * applicablePoints always show the raw correct-answer tally, so the
+ * per-section counts on the PDF still add up.
+ *
+ * auditDate is the audit's own "Audit date" (YYYY-MM-DD). If it is missing
+ * the current rule applies.
  */
-export function computeAuditScore(answers: Record<string, QaAnswerValue | undefined>, def: AuditDefinition): ComputedAuditScore {
+export function computeAuditScore(
+  answers: Record<string, QaAnswerValue | undefined>,
+  def: AuditDefinition,
+  auditDate?: string | null
+): ComputedAuditScore {
   const excludeNa = def.naExcludedFromDenominator === true;
   let applicablePoints = excludeNa ? 0 : allQuestionKeys(def).length;
   let totalPoints = 0;
@@ -452,7 +469,12 @@ export function computeAuditScore(answers: Record<string, QaAnswerValue | undefi
     }
   }
 
-  const percentage = applicablePoints > 0 ? (totalPoints / applicablePoints) * 100 : null;
+  // From AUTO_FAIL_ZERO_FROM an Auto-Fail scores 0% outright. (A triggered
+  // auto-fail question always counts toward the denominator, so there is
+  // always something to score.) Earlier audits keep their computed percentage.
+  const zeroOnAutoFail = !auditDate || auditDate >= AUTO_FAIL_ZERO_FROM;
+  const computedPct = applicablePoints > 0 ? (totalPoints / applicablePoints) * 100 : null;
+  const percentage = autoFail && zeroOnAutoFail ? 0 : computedPct;
 
   let band: 0 | 1 | 2 | 3 | null = null;
   if (percentage !== null) {
