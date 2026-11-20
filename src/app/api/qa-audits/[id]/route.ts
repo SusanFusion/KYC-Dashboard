@@ -119,7 +119,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // Recomputed from the answers, never trusted from the client -- same as
     // when an audit is first submitted.
-    const score = computeAuditScore(answers, definition);
+    const score = computeAuditScore(answers, definition, body.auditDate);
 
     const updated = await repo.updateQaAudit(existing.id, {
       auditType: existing.auditType,
