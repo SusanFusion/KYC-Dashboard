@@ -302,7 +302,7 @@ export const DISCIPLINARY_PENALTIES: PenaltyDefinition[] = [
     category: "disciplinary",
     label: "Repeated Offenses (3+ in quarter)",
     deduction: 0.5,
-    example: "Escalates to formal performance review",
+    example: "3 repeated offenses within the quarter = 1 count",
   },
 ];
 
