@@ -31,6 +31,24 @@ const GATE_FIELD_COLUMN: Record<GateFieldKey, string> = {
   teamRejectionRatePct: "team_rejection_rate_pct",
 };
 
+// Supabase (PostgREST) returns at most 1000 rows per request by default, so a
+// plain select on a big table silently truncates. This pages through every row
+// using a stable order and stitches the pages together.
+const PAGE_SIZE = 1000;
+async function fetchAllRows(
+  build: () => any,
+): Promise<Record<string, unknown>[]> {
+  const all: Record<string, unknown>[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as Record<string, unknown>[];
+    all.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return all;
+}
+
 /**
  * Supabase-backed repository. Mirrors LocalRepository's contract exactly so
  * UI code never needs to know which one it's talking to. See
@@ -88,11 +106,12 @@ export class SupabaseRepository implements DataRepository {
   }
 
   async getRawMetrics(periodId?: string): Promise<RawAgentMetrics[]> {
-    let query = this.client.from("performance_entries").select("*");
-    if (periodId) query = query.eq("period_id", periodId);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []).map(mapPerformanceRow);
+    const rows = await fetchAllRows(() => {
+      let query = this.client.from("performance_entries").select("*").order("id");
+      if (periodId) query = query.eq("period_id", periodId);
+      return query;
+    });
+    return rows.map(mapPerformanceRow);
   }
 
   async getGateMetrics(periodId: string): Promise<RawGateMetrics | null> {
@@ -112,11 +131,12 @@ export class SupabaseRepository implements DataRepository {
   }
 
   async getPenalties(periodId?: string): Promise<PenaltyEntry[]> {
-    let query = this.client.from("penalties").select("*");
-    if (periodId) query = query.eq("period_id", periodId);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []).map((row: Record<string, unknown>) => ({
+    const data = await fetchAllRows(() => {
+      let query = this.client.from("penalties").select("*").order("id");
+      if (periodId) query = query.eq("period_id", periodId);
+      return query;
+    });
+    return data.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       agentId: row.agent_id as string,
       periodId: row.period_id as string,
@@ -164,9 +184,10 @@ export class SupabaseRepository implements DataRepository {
   }
 
   async getImports(): Promise<ImportRecord[]> {
-    const { data, error } = await this.client.from("imports").select("*").order("uploaded_at", { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map((row: Record<string, unknown>) => ({
+    const data = await fetchAllRows(() =>
+      this.client.from("imports").select("*").order("uploaded_at", { ascending: false }).order("id"),
+    );
+    return data.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       fileName: row.file_name as string,
       uploadedAt: row.uploaded_at as string,
@@ -396,13 +417,14 @@ export class SupabaseRepository implements DataRepository {
     // (see the migration SQL) — the anon key must not be able to read this
     // table's confidential columns under any circumstance, including a bug
     // in application code that forgets the password check.
-    let query = this.writeClient.from("qa_audits").select("*").order("created_at", { ascending: false });
-    if (filter?.auditType) query = query.eq("audit_type", filter.auditType);
-    if (filter?.periodId) query = query.eq("period_id", filter.periodId);
-    if (filter?.agentId) query = query.eq("agent_id", filter.agentId);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []).map(mapQaAuditRow);
+    const data = await fetchAllRows(() => {
+      let query = this.writeClient.from("qa_audits").select("*").order("created_at", { ascending: false }).order("id");
+      if (filter?.auditType) query = query.eq("audit_type", filter.auditType);
+      if (filter?.periodId) query = query.eq("period_id", filter.periodId);
+      if (filter?.agentId) query = query.eq("agent_id", filter.agentId);
+      return query;
+    });
+    return data.map(mapQaAuditRow);
   }
 
   async getQaAuditById(id: string): Promise<QaAuditRecord | null> {
